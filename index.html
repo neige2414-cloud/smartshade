@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SmartShade | Mission Control</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="ambient a"></div><div class="ambient b"></div>
+<main class="shell">
+
+<header class="top">
+  <div class="brand">
+    <div class="brand-icon">☀</div>
+    <div>
+      <div class="kicker">SOLAR INTELLIGENCE / CAPSTONE 2026</div>
+      <h1>Smart<span>Shade</span> <em>Control</em></h1>
+      <p>태양 추적형 스마트 그늘막 · 통합 관제 대시보드</p>
+    </div>
+  </div>
+  <div class="top-right">
+    <span class="pill sim" id="pill-B"><i></i> B 추적 · SIM</span>
+    <span class="pill sim" id="pill-A"><i></i> A 롤러 · SIM</span>
+    <span class="pill sim" id="pill-C"><i></i> C 좌판 · SIM</span>
+  </div>
+</header>
+
+<!-- 연결 -->
+<section class="link-bar">
+  <div class="link-group">
+    <span class="small-label">유선 USB</span>
+    <button id="btnSerial" class="link-btn">⌁ 보드 연결 (USB)</button>
+    <span class="link-hint" id="serialHint">보드 3개를 하나씩 추가하세요. 한 번 허용한 포트는 다음부터 자동 연결됩니다.</span>
+  </div>
+  <div class="link-group">
+    <span class="small-label">무선 Wi-Fi (예정)</span>
+    <input id="wsUrl" class="field" placeholder="ws://192.168.4.1:81" spellcheck="false">
+    <button id="btnWs" class="link-btn ghost">연결</button>
+  </div>
+</section>
+
+<section class="hero">
+  <div class="hero-main">
+    <div class="overline">LIVE SOLAR OVERVIEW <span id="locLabel">SEOUL · 37.5665° N / 126.9780° E</span></div>
+    <div class="hero-grid">
+      <div class="sky">
+        <svg id="skySvg" viewBox="0 0 600 270" aria-label="오늘의 태양 경로"></svg>
+      </div>
+      <div class="hero-details">
+        <div class="small-label">현재 태양 위치</div>
+        <div class="hero-angles">
+          <div><span>방위각 AZIMUTH</span><strong><b id="az">--</b><small>°</small></strong><p id="direction">계산 중</p></div>
+          <div><span>고도각 ELEVATION</span><strong><b id="el">--</b><small>°</small></strong><p id="daylight">계산 중</p></div>
+        </div>
+        <div class="small-label gap">현재 차양막 <em id="shadeSrc" class="src">SIM</em></div>
+        <div class="hero-angles shade">
+          <div><span>회전 X · 방위</span><strong><b id="shadeAz">--</b><small>°</small></strong><p id="shadeAzErr">목표와 차이 --°</p></div>
+          <div><span>틸트 Z · 경사</span><strong><b id="shadeTilt">--</b><small>°</small></strong><p id="shadeTiltErr">추정값 · 목표 --°</p></div>
+        </div>
+        <div class="target-row">
+          <div>목표 방위각 <strong id="targetAz">--°</strong></div>
+          <div>목표 틸트 <strong id="targetEl">--°</strong></div>
+        </div>
+      </div>
+    </div>
+    <div class="views">
+      <figure><svg id="compassSvg" viewBox="-120 -120 240 240" aria-label="위에서 본 방향"></svg><figcaption>위에서 본 모습 · 태양 vs 차양막</figcaption></figure>
+      <figure><svg id="tiltSvg" viewBox="0 0 260 170" aria-label="옆에서 본 틸트"></svg><figcaption>옆에서 본 모습 · 고도각 vs 틸트</figcaption></figure>
+    </div>
+  </div>
+
+  <aside class="time-card">
+    <div class="small-label">KOREA STANDARD TIME</div>
+    <div id="clock" class="clock">--:--:--</div>
+    <div id="date" class="date">날짜 계산 중</div>
+    <div class="time-badge" id="timeBadge">실시간</div>
+    <div class="time-divider"></div>
+    <div class="small-label">시연 시각 설정</div>
+    <input type="datetime-local" id="simTime" class="field">
+    <div class="speed">
+      <button data-speed="1" class="selected">1×</button>
+      <button data-speed="60">60×</button>
+      <button data-speed="600">600×</button>
+      <button data-speed="3600">3600×</button>
+    </div>
+    <button id="btnLive" class="link-btn ghost full">◷ 실시간으로 복귀</button>
+    <div class="time-divider"></div>
+    <div class="status-line"><span>운전 상태</span><strong id="state">수동 대기</strong></div>
+    <div class="status-note" id="stateNote">버튼 1회 = 설정한 각도만큼 이동</div>
+  </aside>
+</section>
+
+<section class="overview">
+  <div class="overview-title">
+    <span class="eyebrow">CONTROL STATION</span>
+    <h2>시스템 제어</h2>
+    <p>연결된 보드는 실제로 움직이고, 연결되지 않은 보드는 화면 시뮬레이션(SIM)으로 동작합니다.</p>
+  </div>
+  <div class="mode-panel">
+    <div>
+      <div class="small-label">OPERATING MODE</div>
+      <div class="mode">
+        <button class="selected" id="manual">✥ 수동 제어</button>
+        <button id="auto">☼ 자동 추적</button>
+      </div>
+    </div>
+    <button class="stop" id="stop">■ 전체 정지</button>
+  </div>
+</section>
+
+<section class="boards">
+  <!-- ESP32-B -->
+  <article class="board board-b">
+    <div class="board-head">
+      <div class="board-symbol">↗</div>
+      <div><div class="eyebrow">ESP32-B · SOLAR TRACKING</div><h2>태양 추적 제어</h2><p>DM542 + NEMA23 · MD13S + 5882-45ZY</p></div>
+      <span class="board-chip">24V</span>
+    </div>
+
+    <div class="jog-row">
+      <span class="small-label">버튼 1회 이동량</span>
+      <div class="seg" id="jogStep">
+        <button data-v="1">1°</button><button data-v="3">3°</button><button data-v="5" class="selected">5°</button><button data-v="15">15°</button>
+      </div>
+    </div>
+
+    <div class="axis">
+      <div class="axis-title"><span class="axis-icon">⟳</span><div><strong>X축 회전</strong><small>NEMA23 · 방위각 <b id="xNow">--°</b></small></div></div>
+      <div class="actions">
+        <button class="control-btn blue" data-cmd="X_LEFT"><span>↶</span> 좌회전</button>
+        <button class="control-btn blue" data-cmd="X_RIGHT">우회전 <span>↷</span></button>
+      </div>
+    </div>
+    <div class="axis">
+      <div class="axis-title"><span class="axis-icon purple">◩</span><div><strong>Z축 틸트</strong><small>5882-45ZY · 경사각 <b id="zNow">--°</b> (추정)</small></div></div>
+      <div class="actions">
+        <button class="control-btn purple" data-cmd="Z_UP"><span>↑</span> 상승</button>
+        <button class="control-btn purple" data-cmd="Z_DOWN"><span>↓</span> 하강</button>
+      </div>
+    </div>
+
+    <details class="setup">
+      <summary>각도 직접 입력 · 기준 맞추기</summary>
+      <div class="input-grid">
+        <label>방위각으로 이동<input id="gotoAz" class="field" type="number" min="0" max="359" step="1" value="180"></label>
+        <button class="link-btn" id="btnGotoAz">이동</button>
+        <label>틸트로 이동<input id="gotoTilt" class="field" type="number" min="0" max="60" step="1" value="30"></label>
+        <button class="link-btn" id="btnGotoTilt">이동</button>
+        <label>지금 향한 방향 =<input id="zeroAz" class="field" type="number" min="0" max="359" step="1" value="180"></label>
+        <button class="link-btn ghost" id="btnZeroAz">기준 설정</button>
+        <label>지금 틸트 =<input id="zeroTilt" class="field" type="number" min="0" max="60" step="1" value="0"></label>
+        <button class="link-btn ghost" id="btnZeroTilt">기준 설정</button>
+      </div>
+      <p class="disclaimer">전원을 켤 때마다 X축 기준을 다시 맞춰야 합니다(원점 스위치 미장착). 나침반으로 차양막 방향을 확인한 뒤 입력하세요.</p>
+    </details>
+
+    <div class="sensors">
+      <div class="section-label">☼ BH1750 / 4방향 조도센서 <span id="luxSrc">SIM</span></div>
+      <div class="sensor-list">
+        <div class="sensor"><div class="sensor-top"><span>▲ N · 북</span><strong><b id="n">--</b> <small>lx</small></strong></div><div class="meter"><i id="bar-n"></i></div></div>
+        <div class="sensor"><div class="sensor-top"><span>▶ E · 동</span><strong><b id="e">--</b> <small>lx</small></strong></div><div class="meter"><i id="bar-e"></i></div></div>
+        <div class="sensor"><div class="sensor-top"><span>▼ S · 남</span><strong><b id="s">--</b> <small>lx</small></strong></div><div class="meter"><i id="bar-s"></i></div></div>
+        <div class="sensor"><div class="sensor-top"><span>◀ W · 서</span><strong><b id="w">--</b> <small>lx</small></strong></div><div class="meter"><i id="bar-w"></i></div></div>
+      </div>
+      <p class="disclaimer" id="luxNote">가장 밝은 방향: --</p>
+    </div>
+  </article>
+
+  <!-- ESP32-A -->
+  <article class="board board-a">
+    <div class="board-head">
+      <div class="board-symbol teal">▤</div>
+      <div><div class="eyebrow">ESP32-A · SHADE ACTUATION</div><h2>차양막 롤러 제어</h2><p>DBH-12V · 듀얼 롤러 드라이브</p></div>
+      <span class="board-chip green">12V</span>
+    </div>
+    <div class="axis">
+      <div class="axis-title"><span class="axis-icon teal">Ⅰ</span><div><strong>롤러 모터 01</strong><small>전개율 <b id="r1pct">--</b> · <b id="r1run">정지</b></small></div></div>
+      <div class="actions">
+        <button class="control-btn teal" data-cmd="R1_OPEN"><span>↘</span> 펼치기</button>
+        <button class="control-btn teal" data-cmd="R1_CLOSE"><span>↗</span> 접기</button>
+      </div>
+    </div>
+    <div class="axis">
+      <div class="axis-title"><span class="axis-icon teal">Ⅱ</span><div><strong>롤러 모터 02</strong><small>전개율 <b id="r2pct">--</b> · <b id="r2run">정지</b></small></div></div>
+      <div class="actions">
+        <button class="control-btn teal" data-cmd="R2_OPEN"><span>↘</span> 펼치기</button>
+        <button class="control-btn teal" data-cmd="R2_CLOSE"><span>↗</span> 접기</button>
+      </div>
+    </div>
+    <div class="telemetry">
+      <div class="telemetry-title">SENSOR TELEMETRY <span id="aSrc">SIM</span></div>
+      <div class="telemetry-grid">
+        <div><span>롤러 01 엔코더</span><strong id="enc1">0</strong><small>counts</small></div>
+        <div><span>롤러 02 엔코더</span><strong id="enc2">0</strong><small>counts</small></div>
+        <div class="wind"><span>풍속센서 · A3144</span><strong id="wind">-- m/s</strong><small id="windNote">미연결</small></div>
+      </div>
+    </div>
+    <div class="tip"><span>ⓘ</span><p>롤러 버튼 1회 = <b>3초</b> 구동. 연결이 1.5초 이상 끊기면 보드가 스스로 멈춥니다.</p></div>
+  </article>
+
+  <!-- ESP32-C -->
+  <article class="board board-c">
+    <div class="board-head">
+      <div class="board-symbol warm">◉</div>
+      <div><div class="eyebrow">ESP32-C · SEAT CLIMATE</div><h2>좌판 냉난방</h2><p>펠티어 ×2 · NTC ×5 · SHT31</p></div>
+      <span class="board-chip warm" id="cMode">OFF</span>
+    </div>
+
+    <div class="seat-main">
+      <div>
+        <span class="small-label">좌판 평균</span>
+        <div class="seat-big"><b id="seatAvg">--</b><small>°C</small></div>
+        <div class="seat-sub">목표 <b id="seatTarget">--</b>°C · TEC <b id="tecPct">--</b>% · 팬 <b id="fan">--</b></div>
+      </div>
+      <div class="gauge" aria-hidden="true">
+        <div class="gauge-track"><i id="gaugeFill"></i><em id="gaugeTarget"></em><u id="gaugeDew"></u></div>
+        <div class="gauge-scale"><span>10</span><span>20</span><span>30</span><span>40</span><span>50°C</span></div>
+      </div>
+    </div>
+
+    <div class="mode seat-mode">
+      <button data-seat="COOL">❄ 냉방</button>
+      <button data-seat="HEAT">♨ 난방</button>
+      <button data-seat="OFF" class="selected">○ 끄기</button>
+      <button id="btnFaultReset" class="ghost">고장 해제</button>
+    </div>
+
+    <div class="telemetry">
+      <div class="telemetry-title">SEAT TELEMETRY <span id="cSrc">SIM</span></div>
+      <div class="telemetry-grid four">
+        <div><span>좌판 NTC 1·2·3</span><strong id="seat3">--</strong><small>°C</small></div>
+        <div><span>방열부 NTC 1·2</span><strong id="hx2">--</strong><small>°C · 70°C 차단</small></div>
+        <div><span>외기 · 습도</span><strong id="airRh">--</strong><small>SHT31</small></div>
+        <div><span>이슬점</span><strong id="dew">--</strong><small>°C</small></div>
+      </div>
+    </div>
+    <div class="flags" id="cFlags"></div>
+  </article>
+</section>
+
+<section class="log-panel">
+  <div class="log-head">
+    <div><div class="eyebrow">SYSTEM ACTIVITY</div><h2>실시간 명령 기록</h2></div>
+    <button id="clear" class="clear">↺ 기록 지우기</button>
+  </div>
+  <div id="logs" class="logs" aria-live="polite"></div>
+</section>
+
+<footer><span>☀ SMARTSHADE / CAPSTONE DEMONSTRATION</span><span id="footLink">USB SERIAL (Web Serial) · Wi-Fi WebSocket 준비됨</span></footer>
+</main>
+<script src="script.js"></script>
+</body>
+</html>
